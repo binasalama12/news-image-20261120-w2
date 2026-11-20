@@ -5,6 +5,7 @@
 # three stacked heroes down the left, map + briefs rail on the right,
 # pictured grid in rows of 4 / 5 / 4, date check, footer.
 import math
+import os
 import random
 
 from PIL import Image, ImageDraw, ImageFont
@@ -30,15 +31,24 @@ FD = "/usr/share/fonts/truetype/dejavu/"
 FL = "/usr/share/fonts/truetype/liberation/"
 
 
+def _load_font(candidates, size):
+    for cand in candidates:
+        try:
+            return ImageFont.truetype(cand, size)
+        except OSError:
+            continue
+    try:
+        return ImageFont.load_default(size)
+    except TypeError:
+        return ImageFont.load_default()
+
+
 def F(name, size):
-    return ImageFont.truetype(FD + name, size)
+    return _load_font([FD + name, name], size)
 
 
 def FLF(name, size):
-    try:
-        return ImageFont.truetype(FL + name, size)
-    except Exception:
-        return ImageFont.truetype(FD + name, size)
+    return _load_font([FL + name, FD + name, name], size)
 
 
 SANS = "DejaVuSans.ttf"
@@ -714,7 +724,22 @@ def main():
     dy = draw_datecheck(d, py + 12)
     draw_footer(d, dy + 4)
     im = im.resize((1024, 1024), Image.LANCZOS)
-    im.save("entry.png")
+    out_dirs = []
+    env_dir = os.environ.get("MAKEFUN_OUTPUT_DIR")
+    if env_dir:
+        out_dirs.append(env_dir)
+    out_dirs.append(".")
+    out_dirs.append(os.path.dirname(os.path.abspath(__file__)))
+    last_err = None
+    for out_dir in out_dirs:
+        try:
+            im.save(os.path.join(out_dir, "entry.png"))
+            last_err = None
+            break
+        except OSError as err:
+            last_err = err
+    if last_err is not None:
+        raise last_err
 
 
 if __name__ == "__main__":
